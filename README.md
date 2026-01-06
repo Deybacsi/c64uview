@@ -1,13 +1,14 @@
 # C64 Ultimate viewer for linux
 
+![C64 Ultimate Viewer](images/screenshot2.png)
+
 Simple video & audio stream viewer for the new C64 Ultimate owners.
 
-The project is a fork of [Dusted's U64view](https://github.com/dusteddk/u64view/) to have a working linux streamer for C64 Ultimate. 
-
-For Windows check "U64 Streamer" made by Martijn Wieland (TSB) -> https://www.tsb.space/projects/u64-streamer/
+**Download >>** https://github.com/Deybacsi/c64uview/releases 
 
 
-![C64 Ultimate Viewer](splash.bmp)
+For Windows check the "U64 Streamer" app, made by Martijn Wieland (TSB) -> https://www.tsb.space/projects/u64-streamer/
+
 
 ## How to use
 
@@ -25,6 +26,7 @@ During viewing, you can always press `h` for the help screen.
 ```
 ./c64uview -h
 ```
+
 
 ## Compiling
 
@@ -58,3 +60,5 @@ You can check the [changelog here](CHANGELOG.md)
 
 ## Official page
 https://github.com/Deybacsi/c64uview
+
+The project is a fork of [Dusted's U64view](https://github.com/dusteddk/u64view/) to have a working linux streamer for C64 Ultimate. 
