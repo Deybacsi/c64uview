@@ -1,7 +1,7 @@
 CC = gcc -Wall -std=c99
 
 LDFLAGS = -lSDL2 -lSDL2_net
-EXE = u64view
+EXE = c64uview
 
 all: $(EXE)
 

@@ -6,7 +6,7 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_net.h>
 #include <inttypes.h>
-#include "64.h"
+#include "appicon.h"
 
 
 
@@ -93,21 +93,45 @@ void chkSeq(const char* msg, uint16_t *lseq, uint16_t cseq) {
 }
 
 void pic(SDL_Texture* tex, int width, int height, int pitch, uint32_t* pixels) {
-	union {
-		uint8_t p[4];
-		uint32_t c;
-	} pcol;
-	int p=0;
-	pcol.p[0]=0xff;
-	for(int y=0; y < height; y++) {
-		for(int x=0; x < width; x++) {
-			pcol.p[3]=header_data_cmap[header_data[p]][0];
-			pcol.p[2]=header_data_cmap[header_data[p]][1];
-			pcol.p[1]=header_data_cmap[header_data[p]][2];
-			p++;
-			pixels[x + (y*pitch/4)] = pcol.c;
-		}
-	}
+
+
+    const char* imageFile = "splash.bmp";
+    SDL_Surface* surface = SDL_LoadBMP(imageFile);
+    
+    if (!surface) {
+        printf("Warning: Could not load image '%s': %s\n", imageFile, SDL_GetError());
+        memset(pixels, 0, width * height * 4);
+        return;
+    }
+    
+    SDL_Surface* converted = SDL_ConvertSurfaceFormat(surface, SDL_PIXELFORMAT_RGBA8888, 0);
+    SDL_FreeSurface(surface);
+    
+    if (!converted) {
+        printf("Warning: Could not convert image format\n");
+        memset(pixels, 0, width * height * 4);
+        return;
+    }
+    
+    uint32_t* src = (uint32_t*)converted->pixels;
+    int src_width = converted->w;
+    int src_height = converted->h;
+    
+    for(int y = 0; y < height; y++) {
+        for(int x = 0; x < width; x++) {
+            int src_x = (x < src_width) ? x : src_width - 1;
+            int src_y = (y < src_height) ? y : src_height - 1;
+            
+            if (src_x >= 0 && src_y >= 0 && src_x < src_width && src_y < src_height) {
+                uint32_t pixel = src[src_x + (src_y * converted->w)];
+                pixels[x + (y * pitch / 4)] = pixel;
+            } else {
+                pixels[x + (y * pitch / 4)] = 0xFF000000; 
+            }
+        }
+    }
+    
+    SDL_FreeSurface(converted);
 }
 
 void sendSequence(char *hostName, const uint8_t *data, int len) {
@@ -150,10 +174,8 @@ int isStreaming=0;
 // Yeye, these are fragile, they're good enough for now.
 void startStream(char *hostName) {
 	const uint8_t data[] = {
-		0x1b, 0x5b, 0x31, 0x35, 0x7e, // f5
+		0x1b, 0x4f, 0x50, // f1
 		0x1b, 0x5b, 0x42, // Arrow down
-		0x1b, 0x5b, 0x42,
-		0x1b, 0x5b, 0x42,
 		0x1b, 0x5b, 0x42,
 		0x1b, 0x5b, 0x42,
 		0x1b, 0x5b, 0x42,
@@ -163,43 +185,73 @@ void startStream(char *hostName) {
 		0xd, 0x00,
 		0xd, 0x00
 	};
-	printf("Sending start stream sequence to Ultimate64...\n");
+	printf("Sending start video stream sequence to C64 Ultimate... ");
 	sendSequence(hostName, data, sizeof(data));
-	printf("  * done.\n");
-	isStreaming=1;
-}
-
-void stopStream(char* hostName) {
-	const uint8_t data[] = {
-		0x1b, 0x5b, 0x31, 0x35, 0x7e, // f5
+	printf("done.\n");
+	const uint8_t data2[] = {
+		0x1b, 0x4f, 0x50, // f1
 		0x1b, 0x5b, 0x42, // Arrow down
 		0x1b, 0x5b, 0x42,
 		0x1b, 0x5b, 0x42,
 		0x1b, 0x5b, 0x42,
 		0x1b, 0x5b, 0x42,
 		0x1b, 0x5b, 0x42,
+		0xd, 0x00, //enter
+		0x1b, 0x5b, 0x42, // Arrow down
+		0xd, 0x00,
+		0xd, 0x00
+	};
+	printf("Sending start audio stream sequence to C64 Ultimate... ");
+	sendSequence(hostName, data2, sizeof(data2));
+	printf("done.\n");
+
+	isStreaming=1;
+}
+
+void stopStream(char* hostName) {
+	const uint8_t data[] = {
+		0x1b, 0x4f, 0x50, // f1
+		0x1b, 0x5b, 0x42, // Arrow down
+		0x1b, 0x5b, 0x42,
+		0x1b, 0x5b, 0x42,
+		0x1b, 0x5b, 0x42,
 		0x1b, 0x5b, 0x42,
 		0x1b, 0x5b, 0x42,
 		0xd, 0x00, //enter
-		0xd, 0x00
+		0xd, 0x00,
 	};
-	printf("Sending stop stream sequence to Ultimate64...\n");
+	printf("Sending stop video stream sequence to C64 Ultimate... ");
 	sendSequence(hostName, data, sizeof(data));
-	printf("  * done.\n");
+	printf("done.\n");
+	const uint8_t data2[] = {
+		0x1b, 0x4f, 0x50, // f1
+		0x1b, 0x5b, 0x42, // Arrow down
+		0x1b, 0x5b, 0x42,
+		0x1b, 0x5b, 0x42,
+		0x1b, 0x5b, 0x42,
+		0x1b, 0x5b, 0x42,
+		0x1b, 0x5b, 0x42,
+		0xd, 0x00, //enter
+		0x1b, 0x5b, 0x42, // Arrow down
+		0xd, 0x00,
+	};
+	printf("Sending stop audio stream sequence to C64 Ultimate... ");
+	sendSequence(hostName, data2, sizeof(data2));
+	printf("done.\n");	
 	isStreaming=0;
 }
 
 
 void powerOff(char* hostName) {
 	const uint8_t data[] = {
-		0x1b, 0x5b, 0x31, 0x35, 0x7e, // f5
+		0x1b, 0x4f, 0x50, // f1
+		0xd, 0x00, //enter
 		0x1b, 0x5b, 0x42, // Arrow down
-		0xd, 0x00, //enter
 		0x1b, 0x5b, 0x42,
 		0x1b, 0x5b, 0x42,
-		0xd, 0x00, //enter
+		0xd, 0x00 //enter
 	};
-	printf("Sending power-off sequence to Ultimate64...\n");
+	printf("Sending power-off sequence to C64 Ultimate...\n");
 	sendSequence(hostName, data, sizeof(data));
 	printf("  * done.\n");
 	isStreaming=0;
@@ -207,12 +259,11 @@ void powerOff(char* hostName) {
 
 void reset(char* hostName) {
 	const uint8_t data[] = {
-		0x1b, 0x5b, 0x31, 0x35, 0x7e, // f5
-		0x1b, 0x5b, 0x42, // Arrow down
-		0xd, 0x00, 
+		0x1b, 0x4f, 0x50, // f1
 		0xd, 0x00, //enter
+		0xd, 0x00
 	};
-	printf("Sending reset sequence to Ultimate64...\n");
+	printf("Sending reset sequence to C64 Ultimate...\n");
 	sendSequence(hostName, data, sizeof(data));
 	printf("  * done.\n");
 	isStreaming=0;
@@ -267,11 +318,11 @@ int main(int argc, char** argv) {
     uint_fast8_t debug = 0;
 
 
-	printf("\nUltimate 64 view!\n-----------------\n  Try -h for options.\n\n");
+	printf("\nC64 Ultimate viewer\n-----------------\n  Try -h for options.\n\n");
 
 	for(int i=1; i < argc; i++) {
 		if(strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
-			printf("\nUsage: u64view [-z N |-f] [-s] [-v] [-V] [-c] [-m] [-t] [-T [RGB,...]] [-u IP | -U IP -I IP] [-o FN] [-d]\n"
+			printf("\nUsage: c64uview [-z N |-f] [-s] [-v] [-V] [-c] [-m] [-t] [-T [RGB,...]] [-u IP | -U IP -I IP] [-o FN] [-d]\n"
 					"       -z N  (default 1)   Scale the window to N times size, N must be an integer.\n"
 					"       -f    (default off) Fullscreen, will stretch.\n"
 					"       -s    (default off) Prefer software rendering, more cpu intensive.\n"
@@ -281,7 +332,7 @@ int main(int argc, char** argv) {
 					"       -m    (default off) Completely turn off audio.\n"
 					"       -t    (default off) Use colors that look more like DusteDs TV instead of the 'real' colors.\n"
 					"       -T [] (default off) No argument: Show color values and help for -T\n"
-					"       -u IP (default off) Connect to Ultimate64 at IP and command it to start streaming Video and Audio.\n"
+					"       -u IP (default off) Connect to C64 Ultimate at IP and command it to start streaming Video and Audio.\n"
 					"       -U IP (default off) Same as -u but don't stop the streaming when u64view exits.\n"
 					"       -I IP (default off) Just know the IP, do nothing, so keys can be used for starting/stopping stream.\n"
 					"       -o FN (default off) Output raw ARGB to FN.rgb and PCM to FN.pcm (20 MiB/s, you disk must keep up or packets are dropped).\n"
@@ -409,7 +460,7 @@ int main(int argc, char** argv) {
 				printf("Missing IP address.\n");
 				return 1;
 			}
-			printf("Ultimate64 telnet interface at %s\n", hostName);
+			printf("C64 Ultimate telnet interface at %s\n", hostName);
         } else if(strcmp(argv[i], "-d") == 0) {
             printf("Debug mode enabled.\n");
             debug=1;
@@ -491,7 +542,7 @@ int main(int argc, char** argv) {
 
 
 	// Create a window
-	SDL_Window *win = SDL_CreateWindow("Ultimate 64 view!", 100, 100, width*scale, height*scale, SDL_WINDOW_SHOWN | fullscreenFlag | SDL_WINDOW_RESIZABLE);
+	SDL_Window *win = SDL_CreateWindow("C64 Ultimate viewer", 100, 100, width*scale, height*scale, SDL_WINDOW_SHOWN | fullscreenFlag | SDL_WINDOW_RESIZABLE);
 	if (win == NULL) {
 		printf("SDL_CreateWindow Error: %s\n", SDL_GetError());
 		return 10;
@@ -519,6 +570,11 @@ int main(int argc, char** argv) {
 	}
 
 	printf("\nRunning...\nPress ESC or close window to stop.\n\n");
+
+
+int pixelss = sizeof(iconPixels) / 4;  // Divide by 4 for RGBA
+int dimension = (int)sqrt(pixelss);    // Should be 32
+printf("Icon size: %d bytes\n", dimension);
 
 	pic(tex, width, height, pitch, pixels);
 	int staleVideo=7;
@@ -617,7 +673,9 @@ int main(int argc, char** argv) {
 
 			if(totalVdataBytes==0) {
 				printf("Got data on video port (%i) from %s:%i\n", listen, intToIp(pkg->address.host),pkg->address.port );
+				isStreaming=1;
 			}
+			
 			totalVdataBytes += sizeof(u64msg_t);
 
 			u64msg_t *p = (u64msg_t*)pkg->data;
@@ -711,6 +769,8 @@ int main(int argc, char** argv) {
 	if(verbose) {
 		printf("\nReceived video data: %"PRIu64" bytes.\nReceived audio data: %"PRIu64" bytes.\n", totalVdataBytes, totalAdataBytes);
 	}
-	printf("\n\nThanks to Jens Blidon and Markus Schneider for making my favourite tunes!\nThanks to Booze for making the best remix of Chicanes Halcyon and such beautiful visuals to go along with it!\nThanks to Gideons Logic for the U64!\n\n                                    - DusteD says hi! :-)\n\n");
+	//printf("\n\nThanks to Jens Blidon and Markus Schneider for making my favourite tunes!\nThanks to Booze for making the best remix of Chicanes Halcyon and such beautiful visuals to go along with it!\nThanks to Gideons Logic for the U64!\n\n                                    - DusteD says hi! :-)\n\n");
+	printf("\n\nBye!\n\n");
+	printf("For updates check https://github.com/Deybacsi/c64uview\n");
 	return 0;
 }
